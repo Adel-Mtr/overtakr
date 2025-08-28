@@ -1,27 +1,44 @@
-# backend/simulator.py
-def simulate_strategy(laps_df, pit_laps=None):
-    """
-    Simple simulation: adjust lap times for pit stops and tyre degradation.
-    pit_laps: list of lap numbers where pit stops happen
-    """
-    if pit_laps is None:
-        pit_laps = []
+import pandas as pd
 
-    deg_rate = {'SOFT': 0.12, 'MEDIUM': 0.08, 'HARD': 0.05}  # sec per lap
+
+def simulate_strategy(laps_df, pit_list):
+    # Example: fake simulation
+    simulated = []
+    for i in range(1, len(laps_df) + 1):
+        base_time = 90.0 + (i * 0.05)  # fake lap time
+        if i in pit_list:
+            base_time += 25.0  # pit penalty
+        simulated.append(float(base_time))  # ensure Python float
+    return simulated
+    """
+    Very simple mock strategy simulator.
+    Assumes each pit adds +20s, and tyres degrade over laps.
+    """
     results = []
 
-    for _, lap in laps_df.iterrows():
-        lap_time = lap['LapTime'].total_seconds()
-        compound = lap['Compound'] if 'Compound' in lap else 'SOFT'
-        tyre_age = lap['Stint'] if 'Stint' in lap else 1  # simple example
-        lap_time += deg_rate.get(compound.upper(), 0) * tyre_age
+    for idx, lap in laps_df.iterrows():
+        lap_number = int(lap["LapNumber"]) if "LapNumber" in lap else idx + 1
+        base_time = float(lap["LapTime"].total_seconds(
+        )) if "LapTime" in lap and pd.notna(lap["LapTime"]) else 90.0
 
-        if lap['LapNumber'] in pit_laps:
-            lap_time += 22.5  # pit stop time loss in seconds
+        # Check tyre info
+        compound = lap["Compound"] if "Compound" in lap and pd.notna(
+            lap["Compound"]) else "SOFT"
+        stint_age = int(lap["Stint"]) if "Stint" in lap and pd.notna(
+            lap["Stint"]) else 1
+
+        # Add tyre degradation (slower over time)
+        degraded_time = base_time + (stint_age * 0.05)
+
+        # Add pit stop penalty
+        if lap_number in pit_laps:
+            degraded_time += 20.0
 
         results.append({
-            "lap": lap['LapNumber'],
-            "driver_code": lap['Driver'],
-            "simulated_time": round(lap_time, 3)
+            "lap": lap_number,
+            "time": round(degraded_time, 3),
+            "tyre": compound,
+            "pit": lap_number in pit_laps
         })
+
     return results
