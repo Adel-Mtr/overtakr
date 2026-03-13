@@ -1,30 +1,70 @@
 # Overtakr
 
-Overtakr is a portfolio-ready Formula 1 strategy intelligence app.
-It combines simulation, driver performance storytelling, and overtake dynamics in a single polished dashboard.
+Overtakr is a polished Formula 1 strategy intelligence product built for portfolio presentation.
+It combines race simulation, driver storytelling, and overtake analytics into one cohesive app.
 
-## What it does
+## Case Study
 
-- Simulates multiple pit strategies on top of race-specific baseline pace.
-- Compares outcomes with lap-by-lap charts, cumulative delta, and strategy leaderboard.
-- Surfaces pit-window opportunities with a scoring model.
-- Generates a driver digest (grid-to-finish swing, pace consistency, stint narrative).
-- Builds overtake intelligence from race position shifts.
-- Supports shareable scenario links so visitors can reproduce exact strategy setups.
+### Problem
+F1 strategy discussion is usually fragmented across timing screens, social clips, and static post-race summaries.
+There is no single interactive tool that lets users:
 
-## Product highlights
+- model pit scenarios quickly,
+- compare strategy outcomes visually,
+- understand driver race stories,
+- and inspect position-change momentum.
 
-- Distinct visual identity with animated sections, custom typography, and responsive layout.
-- Strong API contract between FastAPI backend and Next.js frontend.
-- Offline-friendly mode: if FastF1 schedule endpoints are unavailable, the app falls back to local cache data.
+### Approach
+I built Overtakr as a full-stack analytics experience with three integrated lenses:
 
-## Tech stack
+1. **Strategy Lab**
+Run multi-strategy simulations with adjustable pit windows, tyre profile, pit penalty, and weather risk.
 
-- Frontend: Next.js 15, React 19, TypeScript, Tailwind, Framer Motion, Recharts
-- Backend: FastAPI, Python, FastF1, Pandas
-- Data: FastF1 cache + local race artifacts
+2. **Driver Digest**
+Generate per-driver race narratives from lap and result data (grid vs finish, consistency, stint story).
 
-## Local setup
+3. **Overtake Intelligence**
+Track lap-by-lap position swings and summarize race movement hotspots.
+
+### Architecture
+
+- **Frontend**: Next.js 15 + TypeScript + Recharts + Framer Motion
+- **Backend**: FastAPI + Pandas + FastF1
+- **Deployment split**:
+  - Frontend on Vercel
+  - Backend on Render or Fly.io
+
+Data flow:
+
+1. Frontend sends scenario payload (`year`, `round`, race conditions, strategy set).
+2. Backend loads race session data (live FastF1 or local offline cache fallback).
+3. Backend computes simulation outputs, leaderboard, pit windows, digest, and overtake map.
+4. Frontend renders comparative charts and shareable scenario links.
+
+### Engineering Decisions
+
+- **Typed API contracts** across frontend/backend for stable integration.
+- **Offline fallback** from local `ff1cache` when live schedule/session APIs fail.
+- **Scenario URLs** so portfolio viewers can reproduce exact strategy setups.
+- **Production CORS wiring** via environment variables (`CORS_ALLOW_ORIGINS`, `FRONTEND_URL`).
+
+### Impact
+Overtakr demonstrates end-to-end product engineering, not just UI work:
+
+- Multi-endpoint analytics backend designed for real race workflows.
+- Distinct, branded UX suitable for portfolio demo videos and recruiter walkthroughs.
+- Reproducible deployment path with ready-to-use configs for Vercel + Render/Fly.
+
+## Product Features
+
+- Multi-strategy race simulation
+- Strategy leaderboard + cumulative gap chart
+- Pit-window radar scoring
+- Driver digest with race storyline
+- Overtake activity timeline
+- Shareable scenario links
+
+## Local Development
 
 ### 1) Backend
 
@@ -48,21 +88,34 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-## Environment variables
+## Environment Variables
 
-### `backend/.env`
-
-```env
-CORS_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-```
-
-### `frontend/.env.local`
+### Frontend (`frontend/.env.local`)
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
-## API endpoints
+### Backend (`backend/.env`)
+
+```env
+CORS_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://your-vercel-domain.vercel.app
+FRONTEND_URL=
+```
+
+## Deployment
+
+Deployment configs are included:
+
+- Vercel frontend config: `frontend/vercel.json`
+- Render backend config: `render.yaml`
+- Fly backend config: `backend/fly.toml`
+- Container image for backend: `backend/Dockerfile`
+
+See full guide: `docs/deployment.md`.
+
+## API Endpoints
 
 - `GET /api/health`
 - `GET /api/years`
@@ -71,10 +124,3 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 - `POST /api/simulate`
 - `GET /api/driver-digest?year=2024&round=1&driver=VER`
 - `GET /api/overtake-map?year=2024&round=1&driver=VER`
-
-## Portfolio demo flow
-
-1. Choose a cached race and add 2-3 strategies.
-2. Run analysis and compare the leaderboard + gap chart.
-3. Highlight Pit Window Radar and Driver Digest.
-4. Copy a scenario link and demonstrate reproducibility.

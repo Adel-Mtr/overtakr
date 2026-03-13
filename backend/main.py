@@ -26,12 +26,18 @@ from simulator import (
 
 
 def _cors_origins_from_env() -> list[str]:
-    configured = os.getenv(
-        "CORS_ALLOW_ORIGINS",
-        "http://localhost:3000,http://127.0.0.1:3000",
-    )
+    configured = os.getenv("CORS_ALLOW_ORIGINS", "")
+    frontend_url = os.getenv("FRONTEND_URL", "").strip()
+
     origins = [origin.strip() for origin in configured.split(",") if origin.strip()]
-    return origins or ["*"]
+    if frontend_url:
+        origins.append(frontend_url)
+
+    unique_origins = list(dict.fromkeys(origins))
+    if unique_origins:
+        return unique_origins
+
+    return ["http://localhost:3000", "http://127.0.0.1:3000"]
 
 
 app = FastAPI(
