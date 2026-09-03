@@ -43,3 +43,11 @@ jobs:
       - run: npm run build
         env:
           NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+
+  containers:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: docker compose config --quiet
+      - run: docker compose build

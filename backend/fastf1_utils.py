@@ -98,7 +98,7 @@ def list_races_for_year(year: int) -> list[dict[str, Any]]:
 
 @lru_cache(maxsize=4)
 def load_race_session(year: int, round_number: int):
-    """Load one race session and keep a small in-process hot cache.
+    """Load and validate one race session with a small in-process hot cache.
 
     FastF1's own disk cache handles repeat downloads. Telemetry is disabled
     because Overtakr currently needs timing, results, weather and track-status
@@ -108,6 +108,13 @@ def load_race_session(year: int, round_number: int):
 
     session = fastf1.get_session(year, round_number, "R")
     session.load(telemetry=False, weather=True, messages=True)
+
+    # FastF1 may finish loading with warnings when an upstream data source is
+    # incomplete. Access the required datasets here so callers receive one
+    # consistent load failure instead of failing later in an endpoint.
+    _ = session.laps
+    _ = session.results
+
     return session
 
 
