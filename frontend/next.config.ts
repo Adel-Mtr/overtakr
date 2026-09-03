@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   turbopack: {
-    // Keep workspace root explicit when multiple lockfiles exist on the machine.
     root: process.cwd(),
   },
 };
