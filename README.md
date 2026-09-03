@@ -8,7 +8,7 @@
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](./backend/Dockerfile)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-> **Recruiter / technical reviewer?** Start with the [60-second tour](#60-second-technical-tour), then see the [engineering portfolio](./PORTFOLIO.md) and [architecture notes](./docs/architecture.md).
+> **Technical reviewer?** Start with the [60-second tour](#60-second-technical-tour), then see the [architecture notes](./docs/architecture.md).
 
 ---
 
@@ -169,11 +169,3 @@ Deployment configuration is already included:
 - [`backend/Dockerfile`](./backend/Dockerfile)
 
 See [`docs/deployment.md`](./docs/deployment.md) for the deployment walkthrough.
-
----
-
-## Portfolio context
-
-Overtakr is the public flagship project in my software-engineering portfolio. It is intended to show how I approach a product across the full stack rather than only presenting isolated UI components or tutorial exercises.
-
-For a broader view of my React/Next.js, TypeScript, Laravel/PHP, API integration, QA and full-stack experience, see [`PORTFOLIO.md`](./PORTFOLIO.md).
