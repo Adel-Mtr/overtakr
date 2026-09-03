@@ -1,7 +1,7 @@
 services:
   - type: web
     name: overtakr-api
-    env: python
+    runtime: python
     plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt
@@ -15,3 +15,5 @@ services:
         sync: false
       - key: FRONTEND_URL
         sync: false
+      - key: FASTF1_CACHE_DIR
+        value: ff1cache

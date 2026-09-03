@@ -1,41 +1,145 @@
 # Overtakr
 
-**Formula 1 strategy intelligence — race simulation, driver storytelling and overtake analytics in one full-stack application.**
-
+[![CI](https://github.com/Adel-Mtr/overtakr/actions/workflows/ci.yml/badge.svg)](https://github.com/Adel-Mtr/overtakr/actions/workflows/ci.yml)
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=nextdotjs)](./frontend)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](./frontend)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?logo=fastapi&logoColor=white)](./backend)
-[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](./backend/Dockerfile)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](./compose.yaml)
 
-> **Technical reviewer?** Start with the [60-second tour](#60-second-technical-tour), then see the [architecture notes](./docs/architecture.md).
+**Formula 1 strategy intelligence: compare race strategies, inspect driver race stories and explore lap-by-lap position changes.**
+
+Overtakr is a full-stack application built with a Next.js/TypeScript frontend and a FastAPI/Python analytics backend using FastF1 race data.
+
+## Features
+
+- **Strategy Lab** — compare up to six pit/tyre strategies against the same race baseline.
+- **Pit-window radar** — rank potential stop windows using tyre-life, pit-loss and safety-car context.
+- **Driver Digest** — summarize grid-to-finish movement, best lap, consistency and stint structure.
+- **Position-change intelligence** — inspect lap-level position gains/losses and race movement hotspots.
+- **Shareable scenarios** — encode the current race/strategy setup into a reproducible URL.
+- **Runtime FastF1 cache** — first loads fetch race data; repeat loads reuse generated cache data.
+
+> Overtakr's strategy engine is a heuristic comparison model intended for analysis and software demonstration. It is not a real-world race-team prediction model or betting tool.
 
 ---
 
-## What Overtakr does
+## Quick start — Docker
 
-F1 strategy analysis is often spread across timing screens, static summaries and isolated data points. Overtakr brings several views of a race into one interactive product:
+### Requirements
 
-- **Strategy Lab** — compare multiple race strategies with adjustable pit windows, tyre profiles, pit-loss assumptions and weather risk.
-- **Driver Digest** — turn race data into a concise per-driver story covering grid-to-finish movement, consistency and stint context.
-- **Overtake Intelligence** — inspect lap-by-lap position changes and race movement hotspots.
-- **Shareable scenarios** — reproduce a strategy configuration through URL-based scenario state.
+- Docker with Docker Compose
+- Internet access for the first load of a race that is not already cached
 
-The goal is not only to display F1 data, but to demonstrate an end-to-end engineering workflow: product UI, API design, simulation logic, data transformation, deployment configuration and graceful fallback behaviour.
+```bash
+git clone https://github.com/Adel-Mtr/overtakr.git
+cd overtakr
+docker compose up --build
+```
+
+Then open:
+
+- App: **http://localhost:3000**
+- API health: **http://localhost:8000/api/health**
+- Interactive API docs: **http://localhost:8000/docs**
+
+FastF1 cache data is stored in a Docker named volume. Stop the stack with:
+
+```bash
+docker compose down
+```
+
+To also delete cached race data:
+
+```bash
+docker compose down -v
+```
 
 ---
 
-## 60-second technical tour
+## Local development
 
-| What to review | Where | What it demonstrates |
+The repository is tested with **Node.js 22** and **Python 3.13**.
+
+### 1. Backend
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate     # Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt
+cp .env.example .env
+uvicorn main:app --reload --port 8000
+```
+
+### 2. Frontend
+
+In a second terminal:
+
+```bash
+cd frontend
+npm ci
+cp .env.example .env.local
+npm run dev
+```
+
+Open **http://localhost:3000**.
+
+### Useful commands
+
+From the repository root:
+
+```bash
+make test       # backend tests
+make lint       # frontend ESLint
+make typecheck  # TypeScript compiler check
+make build      # production Next.js build
+make docker-up  # Docker Compose stack
+```
+
+---
+
+## Configuration
+
+### Frontend
+
+`frontend/.env.local`
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+```
+
+`NEXT_PUBLIC_API_BASE_URL` is embedded into the Next.js browser bundle at build time. Set it to the public backend URL before a production frontend build.
+
+### Backend
+
+`backend/.env`
+
+```env
+CORS_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+FRONTEND_URL=
+FASTF1_CACHE_DIR=ff1cache
+```
+
+- `CORS_ALLOW_ORIGINS` — comma-separated allowed browser origins.
+- `FRONTEND_URL` — optional extra frontend origin.
+- `FASTF1_CACHE_DIR` — runtime FastF1 cache path; generated cache data is intentionally ignored by Git.
+
+---
+
+## API
+
+| Method | Endpoint | Purpose |
 | --- | --- | --- |
-| Main product UI | [`frontend/app/page.tsx`](./frontend/app/page.tsx) | React/Next.js UI engineering, product state and visualisation |
-| Frontend dependencies | [`frontend/package.json`](./frontend/package.json) | Next.js, React, TypeScript, Recharts, Framer Motion and Zod |
-| API layer | [`backend/main.py`](./backend/main.py) | FastAPI endpoints and request orchestration |
-| Strategy engine | [`backend/simulator.py`](./backend/simulator.py) | Domain logic and simulation modelling |
-| Race-data integration | [`backend/fastf1_utils.py`](./backend/fastf1_utils.py) | FastF1/Pandas ingestion, transformation and fallback handling |
-| System design | [`docs/architecture.md`](./docs/architecture.md) | Architecture, trade-offs and scaling considerations |
-| Deployment | [`docs/deployment.md`](./docs/deployment.md) | Vercel + Render/Fly + Docker deployment path |
+| `GET` | `/` | Service metadata and API links |
+| `GET` | `/api/health` | Health/version/cache status |
+| `GET` | `/api/years` | Supported seasons |
+| `GET` | `/api/races?year=2024` | Race schedule for a season |
+| `GET` | `/api/drivers?year=2024&round=1` | Driver list/results for a race |
+| `POST` | `/api/simulate` | Run strategy comparisons |
+| `GET` | `/api/driver-digest?...` | Driver race summary |
+| `GET` | `/api/overtake-map?...` | Lap-level position-change data |
+
+Request validation rejects malformed pit-lap input, duplicate strategy names and unavailable driver selections with useful `422` responses.
 
 ---
 
@@ -43,129 +147,93 @@ The goal is not only to display F1 data, but to demonstrate an end-to-end engine
 
 ```mermaid
 flowchart LR
-    U[User] --> N[Next.js / React / TypeScript]
+    B[Browser] --> N[Next.js / React / TypeScript]
     N -->|REST JSON| A[FastAPI]
     A --> S[Strategy simulator]
-    A --> F[FastF1 analytics]
-    F --> C[Local cache fallback]
-    S --> A
-    F --> A
+    A --> F[FastF1 + Pandas]
+    F --> C[Runtime disk cache]
     A --> N
 ```
 
-### Frontend
+The frontend owns product state and visualisation. The backend owns FastF1 loading, validation, race-data transformation and strategy modelling. FastF1 high-frequency telemetry is deliberately disabled because the current product only needs timing/results/weather/track-status data, reducing cold-load size and backend memory use.
 
-- Next.js 15
-- React 19
-- TypeScript
-- Recharts
-- Framer Motion
-- Zod
-- Tailwind CSS
-
-### Backend
-
-- FastAPI
-- Python
-- Pandas
-- FastF1
-
-### Deployment
-
-- Frontend: Vercel-ready
-- Backend: Render/Fly-ready
-- Backend container: Docker
-- Environment-driven CORS configuration
-
-For the reasoning behind these choices, see [`docs/architecture.md`](./docs/architecture.md).
+See [`docs/architecture.md`](./docs/architecture.md) for more detail.
 
 ---
 
-## Engineering decisions
-
-### Typed frontend contracts
-
-The frontend models API data explicitly so race and simulation data have predictable shapes at the UI boundary rather than being passed around as loosely structured objects.
-
-### Offline data fallback
-
-Motorsport data services can be slow or unavailable during development and demos. Overtakr can fall back to local cached race data so a temporary external failure does not automatically make the product unusable.
-
-### Reproducible scenario state
-
-Strategy settings can be represented in shareable URLs, which makes a scenario easier to reproduce for demos, comparison and debugging.
-
-### Deployment without hard-coded origins
-
-CORS and frontend URLs are configured through environment variables, allowing local and hosted environments to use the same application code.
-
----
-
-## API surface
+## Project structure
 
 ```text
-GET  /api/health
-GET  /api/years
-GET  /api/races?year=2024
-GET  /api/drivers?year=2024&round=1
-POST /api/simulate
-GET  /api/driver-digest?year=2024&round=1&driver=VER
-GET  /api/overtake-map?year=2024&round=1&driver=VER
+overtakr/
+├── .github/workflows/ci.yml
+├── backend/
+│   ├── main.py
+│   ├── simulator.py
+│   ├── fastf1_utils.py
+│   ├── tests/
+│   ├── Dockerfile
+│   └── requirements*.txt
+├── frontend/
+│   ├── app/
+│   ├── lib/api.ts
+│   ├── Dockerfile
+│   └── package.json
+├── docs/
+├── compose.yaml
+├── Makefile
+└── render.yaml
 ```
+
+Generated FastF1 cache files, virtual environments, Node modules and build output are not committed.
 
 ---
 
-## Local development
+## Quality checks
 
-### Backend
+Every push/PR runs GitHub Actions for:
 
-```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-uvicorn main:app --reload --port 8000
-```
+**Backend**
 
-### Frontend
+- dependency installation;
+- pytest unit/API validation tests;
+- Python bytecode compilation.
 
-```bash
-cd frontend
-npm install
-cp .env.example .env.local
-npm run dev
-```
+**Frontend**
 
-Open `http://localhost:3000`.
+- clean `npm ci` install;
+- ESLint;
+- TypeScript type checking;
+- full Next.js production build.
 
----
-
-## Environment variables
-
-### Frontend — `frontend/.env.local`
-
-```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-```
-
-### Backend — `backend/.env`
-
-```env
-CORS_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://your-vercel-domain.vercel.app
-FRONTEND_URL=
-```
+The backend tests are designed not to download race data, so CI remains deterministic and does not depend on FastF1 availability.
 
 ---
 
 ## Deployment
 
-Deployment configuration is already included:
+Included deployment paths:
 
-- [`frontend/vercel.json`](./frontend/vercel.json)
-- [`render.yaml`](./render.yaml)
-- [`backend/fly.toml`](./backend/fly.toml)
-- [`backend/Dockerfile`](./backend/Dockerfile)
+- **Frontend:** Vercel (`frontend/vercel.json`)
+- **Backend:** Render (`render.yaml`)
+- **Backend:** Fly.io (`backend/fly.toml` + Dockerfile)
+- **Whole app locally/self-hosted:** Docker Compose (`compose.yaml`)
 
-See [`docs/deployment.md`](./docs/deployment.md) for the deployment walkthrough.
+See [`docs/deployment.md`](./docs/deployment.md).
+
+---
+
+## Data/cache behavior
+
+Overtakr does **not** commit downloaded race telemetry or HTTP cache databases. On the first request for a race, FastF1 may need to download and parse upstream data. Subsequent requests can reuse its runtime disk cache plus a small in-process session cache.
+
+If the upstream data source is unavailable and the requested data has never been cached, the API returns a `502` with a user-safe message rather than exposing an internal traceback.
+
+See [`docs/troubleshooting.md`](./docs/troubleshooting.md) if setup or race loading fails.
+
+---
+
+## License and disclaimer
+
+Code in this repository is provided under the [MIT License](./LICENSE).
+
+Overtakr is an independent project and is not affiliated with or endorsed by Formula 1, the FIA, any Formula 1 team, or FastF1. Formula 1 names and related marks belong to their respective owners.

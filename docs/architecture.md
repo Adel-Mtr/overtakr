@@ -1,25 +1,23 @@
 # Overtakr Architecture
 
-This document gives reviewers a fast technical view of how Overtakr is structured and why the main engineering choices were made.
-
 ## System overview
 
 ```mermaid
 flowchart LR
-    U[User] --> F[Next.js + TypeScript frontend]
-    F -->|REST / JSON| A[FastAPI backend]
-    A --> S[Strategy simulator]
-    A --> D[Driver / overtake analytics]
-    D --> FF[FastF1]
-    FF --> C[Local race-data cache]
+    U[Browser] --> F[Next.js + TypeScript]
+    F -->|REST JSON| A[FastAPI]
+    A --> V[Request validation]
+    V --> S[Strategy simulator]
+    V --> D[Driver + position analytics]
+    S --> FF[FastF1 / Pandas]
+    D --> FF
+    FF --> C[Runtime FastF1 cache]
     A --> F
 ```
 
-The project is intentionally split into a frontend application and a data/analytics API. This keeps visual product concerns separate from race-data processing and simulation logic while still allowing both sides to evolve together in one repository.
+Overtakr is a monorepo with two independently deployable services. The split keeps browser/UI concerns separate from Python race-data processing while preserving one reviewable codebase.
 
-## Frontend
-
-**Location:** `frontend/`
+## Frontend — `frontend/`
 
 Primary technologies:
 
@@ -31,95 +29,115 @@ Primary technologies:
 - Zod
 - Tailwind CSS
 
-The frontend is responsible for:
+Responsibilities:
 
-- scenario configuration;
-- user interaction and state;
-- API requests;
-- visual comparison of strategy results;
-- race-story and overtake presentation;
-- shareable scenario state.
+- race/driver selection;
+- strategy configuration;
+- API requests and error presentation;
+- result visualisation;
+- scenario URL sharing.
 
-The main product surface currently lives in `frontend/app/page.tsx`.
+The active App Router implementation lives in `frontend/app/`. Legacy duplicate `src/app` scaffolding was removed so there is one unambiguous application entry point.
 
-## Backend
-
-**Location:** `backend/`
+## Backend — `backend/`
 
 Primary technologies:
 
 - FastAPI
+- Pydantic v2
 - Python
 - Pandas
 - FastF1
 
-Key responsibilities are separated into focused modules:
+Modules:
 
-- `main.py` — HTTP/API boundary and endpoint orchestration;
-- `simulator.py` — strategy simulation logic;
-- `fastf1_utils.py` — race-session loading, transformation and analytics utilities;
-- `ff1cache/` — local data used as a fallback when live data cannot be obtained reliably.
+- `main.py` — HTTP boundary, Pydantic validation and endpoint orchestration;
+- `simulator.py` — deterministic strategy comparison logic;
+- `fastf1_utils.py` — schedule/session loading, FastF1 cache configuration and race-context helpers;
+- `tests/` — deterministic simulator and API-validation tests.
 
-## Main request flow
+## Race-data loading
 
-A representative strategy workflow looks like this:
+FastF1 owns disk caching under `FASTF1_CACHE_DIR` (default `backend/ff1cache`). The cache is runtime data and is excluded from Git.
 
-1. The user selects a season, race and strategy parameters in the Next.js application.
-2. The frontend sends a typed JSON payload to the FastAPI service.
-3. The backend loads or resolves the relevant race data.
-4. Simulation and analytics functions transform the input into comparable strategy outputs.
-5. The API returns structured JSON.
-6. The frontend renders the result as leaderboards, cumulative-gap charts and strategy insights.
+`load_race_session` also uses a small four-session in-process LRU cache. This deliberately avoids retaining many large session objects in memory on a small cloud instance.
 
-## Reliability considerations
+High-frequency car telemetry is disabled during `session.load()` because the current product uses laps, results, weather and track-status context rather than telemetry traces. This reduces download size, cache growth and memory pressure.
 
-### Offline race-data fallback
+## Strategy request flow
 
-External motorsport data can be slow, unavailable or inconsistent during development and demos. The backend therefore supports local cached race data so the product still has a usable failure path when live loading is not available.
+1. User selects a season/race and defines one to six strategies.
+2. Frontend POSTs a structured request to `/api/simulate`.
+3. Pydantic validates driver code, compounds, profiles, numeric ranges, pit-lap syntax and unique strategy names.
+4. FastF1 loads the race session (using disk/in-process caches when available).
+5. The backend builds a race baseline from a selected driver or the field median.
+6. Pit laps are checked against actual race distance.
+7. The simulator computes per-lap strategy projections, stints and cumulative totals.
+8. The API builds a leaderboard and pit-window ranking.
+9. The frontend renders charts and summaries.
 
-### Environment-driven CORS
+## Reliability and failure behavior
 
-Allowed frontend origins are configured through environment variables instead of hard-coding deployment domains into application logic. This allows local development and hosted frontend/backend deployments to use the same codebase.
+### Generated data stays out of Git
 
-### Reproducible scenarios
+Large FastF1 cache databases and timing payloads are generated at runtime instead of being committed. This keeps clones small and avoids coupling the repository to one machine's cache state.
 
-Scenario state can be represented in URLs, making a configuration easier to share and reproduce during review or debugging.
+### Upstream failures
+
+If FastF1 cannot load uncached data, the backend logs the original exception and returns a safe `502` message. Internal paths and raw exception details are not sent to browser users.
+
+### Input validation
+
+The API rejects duplicate strategy names before they can overwrite dictionary results. It also rejects malformed pit-lap syntax, pit stops beyond race distance and unavailable drivers.
+
+### CORS
+
+Allowed browser origins are environment-driven. Localhost defaults make a fresh local checkout work without extra configuration.
+
+## Containers
+
+`compose.yaml` runs the complete app:
+
+- backend on port `8000`;
+- frontend on port `3000`;
+- named FastF1 cache volume;
+- health checks;
+- restart policies.
+
+The frontend uses Next.js standalone output for a smaller runtime image. The backend container runs as a non-root user.
+
+## CI
+
+GitHub Actions verifies:
+
+- backend dependency installation, pytest and Python compilation;
+- frontend `npm ci`, lint, TypeScript checking and production build.
+
+Tests intentionally avoid network-dependent race downloads.
 
 ## Deployment model
-
-The repository includes deployment configuration for a split architecture:
 
 ```text
 Browser
   |
   v
-Vercel / Next.js frontend
+Vercel / Next.js
   |
   v
-Render or Fly.io / FastAPI backend
+Render or Fly.io / FastAPI
   |
   v
-FastF1 + local cache
+FastF1 upstream + runtime cache
 ```
 
-Relevant files:
+See [`deployment.md`](./deployment.md).
 
-- `frontend/vercel.json`
-- `render.yaml`
-- `backend/fly.toml`
-- `backend/Dockerfile`
+## Remaining scaling choices
 
-See [`deployment.md`](./deployment.md) for deployment notes.
+The current design is suitable for a portfolio/demo application and small deployments. If usage grows, the next meaningful changes would be:
 
-## Trade-offs and next improvements
-
-The current architecture favours a clear, reviewable portfolio implementation over unnecessary infrastructure complexity. Reasonable next steps would include:
-
-- automated frontend and backend test coverage;
-- CI checks for linting, type safety and backend tests;
-- stronger API schema generation between Python and TypeScript;
-- persistent scenario storage;
-- observability for slow or failed race-data loads;
-- splitting the large primary page into smaller domain components as the product grows.
-
-These are intentionally documented because recognising the next scaling constraints is part of the engineering work, not an omission to hide from reviewers.
+- move slow race-session preparation to a job/cache layer;
+- add request tracing and latency/error metrics;
+- version/generate TypeScript API contracts from OpenAPI;
+- split the large primary frontend page into domain components;
+- add persistent scenario/user storage only if the product requires accounts.

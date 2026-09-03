@@ -1,56 +1,75 @@
 # Deployment Guide
 
-This repo deploys as split apps:
+Overtakr can be deployed as two services:
 
-- Frontend: Vercel (`frontend` project)
-- Backend: Render or Fly.io (`backend` service)
+- frontend: Next.js (`frontend/`)
+- backend: FastAPI (`backend/`)
 
-## 1) Deploy Backend (Render)
+For a single-machine/self-hosted installation, use `docker compose up --build` from the repository root instead.
 
-`render.yaml` is provided at repo root.
+## Backend — Render
 
-1. Create a new Render Blueprint service from this repo.
-2. Render picks `backend` as `rootDir`.
-3. Set environment variables:
-   - `CORS_ALLOW_ORIGINS=https://<your-vercel-domain>`
-   - `FRONTEND_URL=https://<your-vercel-domain>`
-4. Deploy and copy backend URL (example: `https://overtakr-api.onrender.com`).
+`render.yaml` is provided at repository root.
 
-## 2) Deploy Backend (Fly.io)
+1. Create a Render Blueprint from the repository.
+2. Set the backend environment variables:
+   - `CORS_ALLOW_ORIGINS=https://<frontend-domain>`
+   - `FRONTEND_URL=https://<frontend-domain>` (optional)
+3. Deploy and copy the backend public URL.
+4. Verify `https://<backend-domain>/api/health`.
 
-Fly config is in `backend/fly.toml` and Dockerfile is in `backend/Dockerfile`.
+The FastF1 cache is runtime data. If your hosting filesystem is ephemeral, a restart/redeploy can require race data to be fetched again.
+
+## Backend — Fly.io
+
+The Dockerfile and example configuration are in `backend/`.
+
+Fly app names are globally unique, so replace the `app` value in `backend/fly.toml` (or override it with flyctl) before creating your own deployment.
 
 ```bash
 cd backend
-flyctl launch --copy-config --ha=false
-flyctl secrets set CORS_ALLOW_ORIGINS=https://<your-vercel-domain> FRONTEND_URL=https://<your-vercel-domain>
-flyctl deploy
+fly launch --copy-config --ha=false
+fly secrets set CORS_ALLOW_ORIGINS=https://<frontend-domain> FRONTEND_URL=https://<frontend-domain>
+fly deploy
 ```
 
-## 3) Deploy Frontend (Vercel)
+If you want the FastF1 cache to survive machine replacement, attach a Fly volume and mount it at the path configured by `FASTF1_CACHE_DIR`.
+
+## Frontend — Vercel
 
 `frontend/vercel.json` is included.
 
-1. Import the repo in Vercel.
+1. Import the GitHub repository in Vercel.
 2. Set **Root Directory** to `frontend`.
-3. Set env var:
-   - `NEXT_PUBLIC_API_BASE_URL=https://<your-backend-domain>`
+3. Set:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=https://<backend-domain>
+```
+
 4. Deploy.
 
-## 4) Production env map
+`NEXT_PUBLIC_API_BASE_URL` is a public browser variable and is embedded during the Next.js build, so changing it requires a new frontend build/deploy.
 
-### Frontend (`frontend`)
+## Production sanity check
 
-- `NEXT_PUBLIC_API_BASE_URL`
+After both services are deployed:
 
-### Backend (`backend`)
+1. `GET /api/health` returns `status: ok`.
+2. The frontend loads the season list.
+3. Selecting a race loads drivers.
+4. A strategy analysis returns leaderboard/chart data.
+5. The browser console contains no CORS errors.
+6. Refreshing/repeating the same race benefits from FastF1 cache reuse.
 
-- `CORS_ALLOW_ORIGINS`
-- `FRONTEND_URL` (optional, auto-added to CORS)
+## Environment map
 
-## 5) Post-deploy sanity checks
+### Frontend
 
-- Frontend loads and can list races.
-- Strategy simulation returns chart data.
-- API health endpoint responds: `/api/health`.
-- Browser console has no CORS errors.
+- `NEXT_PUBLIC_API_BASE_URL` — public FastAPI origin.
+
+### Backend
+
+- `CORS_ALLOW_ORIGINS` — comma-separated allowed frontend origins.
+- `FRONTEND_URL` — optional additional frontend origin.
+- `FASTF1_CACHE_DIR` — cache location.
