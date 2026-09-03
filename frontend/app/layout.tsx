@@ -18,7 +18,7 @@ const body = Space_Grotesk({
 export const metadata: Metadata = {
   title: "Overtakr | F1 Strategy Intelligence",
   description:
-    "Portfolio-grade Formula 1 strategy simulator with pit-window analytics, driver digest, and overtake intelligence.",
+    "Formula 1 strategy simulator with pit-window analytics, driver digest, and lap-by-lap position-change intelligence.",
 };
 
 export default function RootLayout({

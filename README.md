@@ -31,10 +31,12 @@ Overtakr is a full-stack application built with a Next.js/TypeScript frontend an
 - Internet access for the first load of a race that is not already cached
 
 ```bash
-git clone https://github.com/Adel-Mtr/overtakr.git
+git clone --depth 1 https://github.com/Adel-Mtr/overtakr.git
 cd overtakr
 docker compose up --build
 ```
+
+Alternatively, download the repository's current source ZIP from GitHub and run the same `docker compose up --build` command from the extracted folder.
 
 Then open:
 
@@ -204,6 +206,11 @@ Every push/PR runs GitHub Actions for:
 - ESLint;
 - TypeScript type checking;
 - full Next.js production build.
+
+**Containers**
+
+- Docker Compose configuration validation;
+- complete frontend and backend image builds.
 
 The backend tests are designed not to download race data, so CI remains deterministic and does not depend on FastF1 availability.
 
