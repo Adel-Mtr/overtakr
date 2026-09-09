@@ -37,6 +37,8 @@ Responsibilities:
 - result visualisation;
 - scenario URL sharing.
 
+Result visualisation is split into `SimulationResults` (charts, leaderboard and stints) and `RaceInsights` (driver digest and position changes). The page retains race selection, API orchestration and strategy editing; shared formatting lives in `lib/presentation.ts`.
+
 The active App Router implementation lives in `frontend/app/`. Legacy duplicate `src/app` scaffolding was removed so there is one unambiguous application entry point.
 
 ## Backend — `backend/`
@@ -139,5 +141,5 @@ The current design is suitable for a portfolio/demo application and small deploy
 - move slow race-session preparation to a job/cache layer;
 - add request tracing and latency/error metrics;
 - version/generate TypeScript API contracts from OpenAPI;
-- split the large primary frontend page into domain components;
+- continue extracting strategy-builder interactions into focused components;
 - add persistent scenario/user storage only if the product requires accounts.
