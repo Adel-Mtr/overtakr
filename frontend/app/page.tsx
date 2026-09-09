@@ -1,22 +1,11 @@
 "use client";
 
 import axios from "axios";
+import { SimulationResults } from "../components/SimulationResults";
+import { RaceInsights } from "../components/RaceInsights";
+import { formatSeconds, STRATEGY_COLORS } from "../lib/presentation";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 
 import {
   Compound,
@@ -58,7 +47,7 @@ type ScenarioPayload = {
   }>;
 };
 
-const STRATEGY_COLORS = ["#d3203f", "#0f66c3", "#159947", "#f2b544", "#0d2a4a", "#c85d16"];
+
 
 function makeStrategy(index: number): StrategyDraft {
   const labels = ["Baseline", "Attack", "Undercut", "Late Charge", "Safety Buffer", "Wildcard"];
@@ -82,12 +71,6 @@ function makeStrategy(index: number): StrategyDraft {
   };
 }
 
-function formatSeconds(totalSeconds: number): string {
-  if (!Number.isFinite(totalSeconds)) return "-";
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds.toFixed(3).padStart(6, "0")}`;
-}
 
 function encodeScenario(payload: ScenarioPayload): string {
   const raw = JSON.stringify(payload);
@@ -268,58 +251,6 @@ export default function Home() {
     () => drivers.find((driverOption) => driverOption.code === driver) ?? null,
     [drivers, driver]
   );
-
-  const lapChartData = useMemo(() => {
-    if (!simulation) return [];
-
-    const strategyEntries = Object.entries(simulation.strategies);
-    const totalLaps = simulation.meta.total_laps;
-
-    return Array.from({ length: totalLaps }, (_, index) => {
-      const lap = index + 1;
-      const point: Record<string, number> = { lap };
-
-      for (const [strategyName, strategyData] of strategyEntries) {
-        point[strategyName] = strategyData.laps[index]?.lap_time ?? 0;
-      }
-
-      return point;
-    });
-  }, [simulation]);
-
-  const gapChartData = useMemo(() => {
-    if (!simulation) return [];
-
-    const strategyEntries = Object.entries(simulation.strategies);
-    const totalLaps = simulation.meta.total_laps;
-
-    return Array.from({ length: totalLaps }, (_, index) => {
-      const lap = index + 1;
-      const point: Record<string, number> = { lap };
-      const cumulatives = strategyEntries.map(([, strategyData]) => strategyData.laps[index]?.cumulative ?? 0);
-      const bestAtLap = Math.min(...cumulatives);
-
-      for (const [strategyName, strategyData] of strategyEntries) {
-        point[strategyName] = Number(((strategyData.laps[index]?.cumulative ?? 0) - bestAtLap).toFixed(3));
-      }
-
-      return point;
-    });
-  }, [simulation]);
-
-  const overtakeChartData = useMemo(() => {
-    if (!overtake) return [];
-
-    const lapMap = new Map<number, number>();
-
-    for (const event of overtake.lap_events) {
-      lapMap.set(event.lap, (lapMap.get(event.lap) ?? 0) + event.gain);
-    }
-
-    return Array.from(lapMap.entries())
-      .map(([lap, netChange]) => ({ lap, netChange }))
-      .sort((a, b) => a.lap - b.lap);
-  }, [overtake]);
 
   const topStrategy = simulation?.leaderboard[0] ?? null;
 
@@ -697,240 +628,9 @@ export default function Home() {
         <div className="mt-6 rounded-2xl border border-[#efb8c2] bg-[#fff0f3] px-4 py-3 text-sm text-[#861c32]">{error}</div>
       )}
 
-      {simulation && (
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.08 }}
-          className="mt-6 grid gap-6"
-        >
-          <div className="panel p-5 md:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="display-font text-3xl text-[#12203b] md:text-4xl">Strategy Delta Charts</h2>
-              <span className="badge bg-[#0f66c322] text-[#0f66c3]">{simulation.meta.race}</span>
-            </div>
+      {simulation && <SimulationResults simulation={simulation} />}
 
-            <div className="mt-4 grid gap-6 xl:grid-cols-2">
-              <div className="h-[320px] w-full rounded-2xl border border-[#d8d8cf] bg-white p-3">
-                <p className="mb-2 text-sm font-semibold">Lap Time Projection</p>
-                <ResponsiveContainer>
-                  <LineChart data={lapChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0d8" />
-                    <XAxis dataKey="lap" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} domain={["dataMin - 1", "dataMax + 1"]} />
-                    <Tooltip />
-                    <Legend />
-                    {Object.keys(simulation.strategies).map((name, index) => (
-                      <Line
-                        key={name}
-                        type="monotone"
-                        dataKey={name}
-                        stroke={STRATEGY_COLORS[index % STRATEGY_COLORS.length]}
-                        strokeWidth={2.3}
-                        dot={false}
-                      />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="h-[320px] w-full rounded-2xl border border-[#d8d8cf] bg-white p-3">
-                <p className="mb-2 text-sm font-semibold">Cumulative Gap to Best (s)</p>
-                <ResponsiveContainer>
-                  <AreaChart data={gapChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0d8" />
-                    <XAxis dataKey="lap" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Legend />
-                    {Object.keys(simulation.strategies).map((name, index) => (
-                      <Area
-                        key={name}
-                        type="monotone"
-                        dataKey={name}
-                        stroke={STRATEGY_COLORS[index % STRATEGY_COLORS.length]}
-                        fill={STRATEGY_COLORS[index % STRATEGY_COLORS.length]}
-                        fillOpacity={0.1}
-                        strokeWidth={2}
-                      />
-                    ))}
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-6 xl:grid-cols-[1.1fr_1fr]">
-            <div className="panel p-5 md:p-6">
-              <h3 className="display-font text-3xl text-[#12203b]">Leaderboard</h3>
-              <div className="mt-4 overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[#d8d8cf] text-left">
-                      <th className="px-2 py-2">Strategy</th>
-                      <th className="px-2 py-2">Total Time</th>
-                      <th className="px-2 py-2">Gap</th>
-                      <th className="px-2 py-2">Pits</th>
-                      <th className="px-2 py-2">Avg Lap</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {simulation.leaderboard.map((row, index) => (
-                      <tr key={row.name} className="border-b border-[#ece9df]">
-                        <td className="px-2 py-2 font-semibold" style={{ color: STRATEGY_COLORS[index % STRATEGY_COLORS.length] }}>
-                          {row.name}
-                        </td>
-                        <td className="px-2 py-2">{formatSeconds(row.total_time)}</td>
-                        <td className="px-2 py-2">{row.gap_to_best.toFixed(3)}s</td>
-                        <td className="px-2 py-2">{row.pits}</td>
-                        <td className="px-2 py-2">{row.avg_lap.toFixed(3)}s</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="panel p-5 md:p-6">
-              <h3 className="display-font text-3xl text-[#12203b]">Stint Blueprint</h3>
-              <p className="mt-1 text-sm subtle">Tyre stint structure for each strategy.</p>
-
-              <div className="mt-4 space-y-4">
-                {Object.entries(simulation.strategies).map(([name, strategy], index) => (
-                  <div key={name} className="panel-muted p-3">
-                    <p className="text-sm font-semibold" style={{ color: STRATEGY_COLORS[index % STRATEGY_COLORS.length] }}>
-                      {name}
-                    </p>
-                    <div className="mt-2 flex min-h-8 overflow-hidden rounded-lg border border-[#dad8ce]">
-                      {strategy.stints.map((stint) => {
-                        const widthPct = Math.max(6, (stint.laps / simulation.meta.total_laps) * 100);
-                        const shade = stint.compound === "SOFT" ? "#ffd1db" : stint.compound === "MEDIUM" ? "#fff0c5" : "#d7e3f3";
-                        return (
-                          <div
-                            key={`${name}-${stint.start_lap}-${stint.compound}`}
-                            className="flex items-center justify-center border-r border-[#fff] text-[11px] font-semibold"
-                            style={{ width: `${widthPct}%`, background: shade }}
-                          >
-                            {stint.compound} {stint.start_lap}-{stint.end_lap}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </motion.section>
-      )}
-
-      <section className="mt-6 grid gap-6 xl:grid-cols-2">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="panel p-5 md:p-6"
-        >
-          <h2 className="display-font text-3xl text-[#12203b] md:text-4xl">Driver Digest</h2>
-          {!digest && <p className="mt-3 text-sm subtle">Run analysis to generate a personalized race story.</p>}
-          {digest && (
-            <>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="panel-muted p-3">
-                  <p className="text-xs uppercase tracking-[0.08em] subtle">Driver</p>
-                  <p className="mt-1 text-lg font-bold">{digest.driver} - {digest.full_name}</p>
-                  <p className="text-sm subtle">{digest.team}</p>
-                </div>
-                <div className="panel-muted p-3">
-                  <p className="text-xs uppercase tracking-[0.08em] subtle">Position Swing</p>
-                  <p className="mt-1 text-lg font-bold">
-                    P{digest.grid_position} to P{digest.finish_position}
-                  </p>
-                  <p className="text-sm subtle">Net {digest.places_gained >= 0 ? `+${digest.places_gained}` : digest.places_gained}</p>
-                </div>
-                <div className="panel-muted p-3">
-                  <p className="text-xs uppercase tracking-[0.08em] subtle">Best Lap</p>
-                  <p className="mt-1 text-lg font-bold">
-                    {digest.best_lap ? `Lap ${digest.best_lap.lap}` : "-"}
-                  </p>
-                  <p className="text-sm subtle">{digest.best_lap ? `${digest.best_lap.time.toFixed(3)}s` : "No valid best lap"}</p>
-                </div>
-                <div className="panel-muted p-3">
-                  <p className="text-xs uppercase tracking-[0.08em] subtle">Consistency</p>
-                  <p className="mt-1 text-lg font-bold">{digest.consistency_std.toFixed(3)}s</p>
-                  <p className="text-sm subtle">Average lap {digest.average_lap.toFixed(3)}s</p>
-                </div>
-              </div>
-
-              <div className="panel-muted mt-4 p-4">
-                <p className="text-xs uppercase tracking-[0.08em] subtle">Storyline</p>
-                <p className="mt-2 text-sm text-[#2d3650]">{digest.storyline}</p>
-              </div>
-
-              <div className="mt-4 space-y-2">
-                {digest.stints.map((stint, index) => (
-                  <div key={`${stint.compound}-${index}`} className="flex items-center justify-between rounded-xl border border-[#ddd8cd] bg-white px-3 py-2 text-sm">
-                    <span className="font-semibold">{stint.compound}</span>
-                    <span className="subtle">
-                      Lap {stint.start_lap} to {stint.end_lap} ({stint.laps} laps)
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.14 }}
-          className="panel p-5 md:p-6"
-        >
-          <h2 className="display-font text-3xl text-[#12203b] md:text-4xl">Overtake Intelligence</h2>
-          {!overtake && <p className="mt-3 text-sm subtle">Run analysis to inspect position-change momentum.</p>}
-          {overtake && (
-            <>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="panel-muted p-3">
-                  <p className="text-xs uppercase tracking-[0.08em] subtle">Position Changes</p>
-                  <p className="mt-1 text-lg font-bold">{overtake.summary.total_position_changes}</p>
-                </div>
-                <div className="panel-muted p-3">
-                  <p className="text-xs uppercase tracking-[0.08em] subtle">Most Active Lap</p>
-                  <p className="mt-1 text-lg font-bold">{overtake.summary.most_active_lap ?? "-"}</p>
-                </div>
-              </div>
-
-              <div className="mt-4 h-[250px] rounded-2xl border border-[#d8d8cf] bg-white p-3">
-                <ResponsiveContainer>
-                  <BarChart data={overtakeChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0d8" />
-                    <XAxis dataKey="lap" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Bar dataKey="netChange" fill="#0f66c3" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="panel-muted mt-4 p-4">
-                <p className="text-xs uppercase tracking-[0.08em] subtle">Final Position Swings</p>
-                <div className="mt-2 space-y-2">
-                  {overtake.driver_swings.slice(0, 8).map((item) => (
-                    <div key={item.driver} className="flex items-center justify-between rounded-xl border border-[#ddd8cd] bg-white px-3 py-2 text-sm">
-                      <span className="font-semibold">{item.driver}</span>
-                      <span className="subtle">
-                        P{item.grid} to P{item.finish} ({item.net >= 0 ? `+${item.net}` : item.net})
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-        </motion.div>
-      </section>
+      <RaceInsights digest={digest} overtake={overtake} />
     </main>
   );
 }

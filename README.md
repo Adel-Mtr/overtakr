@@ -10,6 +10,27 @@
 
 Overtakr is a full-stack application built with a Next.js/TypeScript frontend and a FastAPI/Python analytics backend using FastF1 race data.
 
+## 60-second technical tour
+
+**Start here:** [UI orchestration](frontend/app/page.tsx) · [API types and requests](frontend/lib/api.ts) · [Strategy engine](backend/simulator.py) · [Tests](backend/tests)
+
+1. **Set up a comparison:** choose a race and configure up to six strategy variants.
+2. **Trace the boundary:** TypeScript request/response types describe the browser contract; FastAPI validates submitted inputs.
+3. **Inspect the model:** the simulator builds lap projections from a race baseline, tyre assumptions and pit penalties.
+4. **Review reliability:** tests cover pit-lap parsing, leaderboard ordering, API validation and upstream session-loading behaviour without downloading race data.
+
+### Engineering decisions
+
+- **Separate UI and modelling:** Next.js owns interaction and charts; Python owns race-data preparation and simulation.
+- **Bound in-process caching:** retain up to four loaded sessions and use FastF1's runtime disk cache for repeat requests.
+- **Avoid unnecessary telemetry:** load timing/results/weather context without high-frequency car telemetry.
+- **Keep the model honest:** results are heuristic comparisons, not validated predictions of real races.
+- **Make quality checks inspectable:** [CI](https://github.com/Adel-Mtr/overtakr/actions/workflows/ci.yml) checks tests, lint, TypeScript, production builds and containers.
+
+### Review status and limitations
+
+The documented demo runs locally; no hosted demo is linked yet. First-time race loading requires an upstream download and can be slow. Backend tests are deterministic; browser end-to-end and accessibility testing remain areas to expand. Performance improvements are design choices, not benchmarked speed claims.
+
 ## Features
 
 - **Strategy Lab** — compare up to six pit/tyre strategies against the same race baseline.
