@@ -1,5 +1,7 @@
 # Overtakr
 
+**[Open the live demo](https://adel-overtakr-web-demo.onrender.com/)** · Free hosting may take a moment to wake up.
+
 [![CI](https://github.com/Adel-Mtr/overtakr/actions/workflows/ci.yml/badge.svg)](https://github.com/Adel-Mtr/overtakr/actions/workflows/ci.yml)
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=nextdotjs)](./frontend)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](./frontend)
@@ -29,7 +31,7 @@ Overtakr is a full-stack application built with a Next.js/TypeScript frontend an
 
 ### Review status and limitations
 
-The documented demo runs locally; no hosted demo is linked yet. First-time race loading requires an upstream download and can be slow. Backend tests are deterministic; browser end-to-end and accessibility testing remain areas to expand. Performance improvements are design choices, not benchmarked speed claims.
+The hosted demo has been checked with the 2024 Emilia Romagna race: season/race/driver loading, strategy results, charts and driver insights completed successfully. First-time race loading requires an upstream download and can be slow. Backend tests are deterministic; browser end-to-end and accessibility testing remain areas to expand. Performance improvements are design choices, not benchmarked speed claims.
 
 ## Features
 
