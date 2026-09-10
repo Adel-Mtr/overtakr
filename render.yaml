@@ -32,8 +32,8 @@ projects:
             region: frankfurt
             branch: main
             rootDir: frontend
-            buildCommand: npm ci && npm run build
-            startCommand: npm run start -- --hostname 0.0.0.0 --port $PORT
+            buildCommand: npm ci && npm run build && cp -r public .next/standalone/public && cp -r .next/static .next/standalone/.next/static
+            startCommand: HOSTNAME=0.0.0.0 node .next/standalone/server.js
             healthCheckPath: /
             autoDeployTrigger: "off"
             envVars:
