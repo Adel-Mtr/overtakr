@@ -20,9 +20,9 @@ projects:
               - key: PYTHON_VERSION
                 value: 3.13.3
               - key: CORS_ALLOW_ORIGINS
-                value: https://example.invalid
+                value: https://adel-overtakr-web-demo.onrender.com
               - key: FRONTEND_URL
-                value: https://example.invalid
+                value: https://adel-overtakr-web-demo.onrender.com
               - key: FASTF1_CACHE_DIR
                 value: ff1cache
           - type: web
@@ -40,4 +40,4 @@ projects:
               - key: NODE_VERSION
                 value: "22"
               - key: NEXT_PUBLIC_API_BASE_URL
-                value: https://example.invalid
+                value: https://adel-overtakr-api-demo.onrender.com
